@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Bond interest calculator: coupon, TDS, actual-day payout schedule, YTM and financial-year totals.">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>Bond Interest Calculator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: inputs panel left, results ledger right; stacks on phone */
+:root{
+  --bg:#f5f6f4; --panel:#ffffff; --fg:#1b2420; --muted:#5d6b64; --line:#dde3df;
+  --accent:#1f6f52; --accent-soft:#e3f0ea; --neg:#b4452f;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121815; --panel:#1a221e; --fg:#e4ebe7; --muted:#9aa9a1; --line:#2c3732;
+  --accent:#5cc49a; --accent-soft:#1d3329; --neg:#f08a72; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121815; --panel:#1a221e; --fg:#e4ebe7; --muted:#9aa9a1; --line:#2c3732;
+  --accent:#5cc49a; --accent-soft:#1d3329; --neg:#f08a72; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.5}
+.wrap{max-width:1040px;margin:0 auto;padding-block:28px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:1.6rem;font-weight:600;margin:0 0 4px;text-wrap:balance}
+.sub{color:var(--muted);margin:0 0 24px;max-width:65ch}
+.grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
+.fields{display:grid;gap:14px}
+label{display:block;font-size:.78rem;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.in{display:flex;align-items:center;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+.in:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.in span{padding:0 10px;color:var(--muted);font-family:var(--mono);font-size:.9rem}
+input,select{flex:1;min-width:0;border:0;background:transparent;color:var(--fg);font:500 1rem var(--mono);padding:9px 10px;outline:none}
+select{font-family:var(--sans);cursor:pointer}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hint{font-size:.78rem;color:var(--muted);margin-top:4px}
+.sect{margin:0 0 6px;font-size:.78rem;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+.results{display:grid;gap:20px}
+.head{display:flex;flex-wrap:wrap;gap:24px;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.head div{min-width:0}
+.big{font:500 1.7rem var(--mono);font-variant-numeric:tabular-nums}
+.big.acc{color:var(--accent)}
+.cap{font-size:.8rem;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+td{padding:9px 0;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td:last-child{text-align:right;font-family:var(--mono);white-space:nowrap;padding-left:12px}
+td small{display:block;color:var(--muted);font-size:.78rem}
+.neg{color:var(--neg)} .pos{color:var(--accent)}
+.note{background:var(--accent-soft);border-radius:8px;padding:12px 14px;font-size:.88rem}
+.note p{margin:0 0 6px} .note p:last-child{margin:0}
+.schedhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.schedhead .sect{margin:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--muted);font:500 .82rem var(--sans);padding:6px 12px;cursor:pointer}
+.seg button.on{background:var(--accent-soft);color:var(--accent)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.scroll{overflow:auto;max-height:420px}
+table.sched{min-width:460px;font-size:.88rem}
+table.sched th{position:sticky;top:0;background:var(--panel);text-align:right;font-weight:500;font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:6px 0 6px 12px;border-bottom:1px solid var(--line)}
+table.sched th:first-child,table.sched td:first-child{text-align:left;padding-left:0}
+table.sched td{text-align:right;font-family:var(--mono);padding:7px 0 7px 12px;white-space:nowrap}
+table.sched tr.red td{background:var(--accent-soft)}
+table.sched tr.tot td{font-weight:600;border-top:2px solid var(--line)}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <h1>Bond Interest Calculator</h1>
+  <p class="sub">Enter the bond's terms to see the coupon you'll receive, what lands in your bank after TDS, and the real return implied by the YTM and your purchase price. The figures loaded are an example.</p>
+
+  <div class="grid">
+    <form class="panel fields" id="f" autocomplete="off">
+      <p class="sect">Bond terms</p>
+      <div class="row2">
+        <div><label for="fv">Face value</label><div class="in"><span>₹</span><input id="fv" type="number" min="0" step="any" value="1000"></div></div>
+        <div><label for="qty">No. of bonds</label><div class="in"><input id="qty" type="number" min="0" step="1" value="100"></div></div>
+      </div>
+      <div><label for="price">Purchase price per bond</label><div class="in"><span>₹</span><input id="price" type="number" min="0" step="any" value="1015"></div>
+        <div class="hint">Use the face value if bought at par.</div></div>
+      <div class="row2">
+        <div><label for="cr">Coupon rate</label><div class="in"><input id="cr" type="number" min="0" step="any" value="9.25"><span>%</span></div></div>
+        <div><label for="freq">Payout</label><div class="in"><select id="freq">
+          <option value="12">Monthly</option><option value="4">Quarterly</option>
+          <option value="2">Half-yearly</option><option value="1" selected>Annual</option></select></div></div>
+      </div>
+      <div><label for="ytm">YTM</label><div class="in"><input id="ytm" type="number" min="0" step="any" value="8.75"><span>%</span></div></div>
+      <div class="row2">
+        <div><label for="sd">Start date</label><div class="in"><input id="sd" type="date" value="2026-11-12"></div></div>
+        <div><label for="md">Maturity date</label><div class="in"><input id="md" type="date" value="2029-11-12"></div></div>
+      </div>
+      <div class="row2">
+        <div><label for="pday">Interest paid on</label><div class="in"><select id="pday"></select></div></div>
+        <div id="pmonwrap"><label for="pmon" id="pmonlbl">In months</label><div class="in"><select id="pmon"></select></div></div>
+      </div>
+      <div class="hint" id="o_dates">Start = the date you buy (settlement). Payout dates are counted back from maturity.</div>
+      <p class="sect" style="margin-top:6px">Tax</p>
+      <div class="row2">
+        <div><label for="tds">TDS</label><div class="in"><input id="tds" type="number" min="0" max="100" step="any" value="10"><span>%</span></div></div>
+        <div><label for="slab">Your slab</label><div class="in"><select id="slab">
+          <option value="0">0%</option><option value="5">5%</option><option value="10">10%</option>
+          <option value="15">15%</option><option value="20">20%</option><option value="25">25%</option>
+          <option value="30" selected>30%</option></select></div></div>
+      </div>
+      <div class="hint">Slab is applied as-is, without cess or surcharge.</div>
+      <p class="sect" style="margin-top:6px">Interest calculation</p>
+      <div class="row2">
+        <div><label for="dc">Day count</label><div class="in"><select id="dc">
+          <option value="equal">Equal payouts</option>
+          <option value="a365">Actual/365</option>
+          <option value="aa" selected>Actual/Actual</option></select></div></div>
+        <div><label for="rnd">Rounding</label><div class="in"><select id="rnd">
+          <option value="up" selected>Net rounded up</option>
+          <option value="rupee">Nearest ₹1</option>
+          <option value="none">None</option></select></div></div>
+      </div>
+      <div class="hint">"Net rounded up" keeps gross and TDS in paise and rounds the amount credited up to the next rupee, as many brokers do. Most Indian NCDs and bonds use Actual/Actual: each payout = face value × rate × days in the period ÷ 365, or ÷ 366 if the period includes 29 Feb. "Equal payouts" splits the yearly coupon evenly.</div>
+    </form>
+
+    <div class="results">
+      <section class="panel">
+        <div class="head">
+          <div><div class="cap" id="o_netcap">Credited to bank, next payout</div><div class="big acc" id="o_netper">–</div></div>
+          <div><div class="cap">Gross coupon, per year</div><div class="big" id="o_gross">–</div></div>
+        </div>
+        <table>
+          <tr><td>Holding period<small id="o_days"></small></td><td id="o_tenure"></td></tr>
+          <tr><td>Payouts you'll receive<small id="o_next"></small></td><td id="o_npay"></td></tr>
+          <tr><td><span id="o_gplabel">Gross coupon per payout</span><small id="o_freqtxt"></small></td><td id="o_grossper"></td></tr>
+                    <tr><td><span id="o_tdlabel">TDS deducted per payout</span><small>Shows in Form 26AS / AIS, claimed against your tax</small></td><td id="o_tdsper"></td></tr>
+          <tr><td>Net credited per year<small>Yearly coupon after TDS</small></td><td id="o_netyr"></td></tr>
+          <tr><td>Tax you actually owe on coupon per year<small>At your slab, on the gross coupon</small></td><td id="o_taxyr"></td></tr>
+          <tr><td>Extra to pay (or refund) at filing, per year<small>Slab tax minus TDS already cut</small></td><td id="o_bal"></td></tr>
+        </table>
+      </section>
+
+      <section class="panel">
+        <p class="sect">Real return</p>
+        <table>
+          <tr><td>Amount invested<small>Price × bonds</small></td><td id="o_inv"></td></tr>
+          <tr><td>Current yield<small>Annual coupon ÷ amount invested</small></td><td id="o_cy"></td></tr>
+          <tr><td>Return per year at your YTM<small>Amount invested × YTM</small></td><td id="o_ytmret"></td></tr>
+          <tr><td>YTM implied by your price<small>Check against the YTM you were quoted</small></td><td id="o_impl"></td></tr>
+          <tr><td>Total coupons till maturity (gross)<small>Sum of every payout in the schedule</small></td><td id="o_totc"></td></tr>
+          <tr><td>Gain / loss at redemption<small>Face value back minus price paid</small></td><td id="o_cg"></td></tr>
+          <tr><td>Net rupee gain to maturity, pre-tax</td><td id="o_tot"></td></tr>
+          <tr><td>Approx. post-tax yield<small>YTM × (1 − slab)</small></td><td id="o_pt"></td></tr>
+        </table>
+      </section>
+
+      <section class="panel">
+        <div class="schedhead">
+          <p class="sect">Payout schedule</p>
+          <div class="seg" role="tablist">
+            <button type="button" id="v_each" class="on" aria-pressed="true">Each payout</button>
+            <button type="button" id="v_fy" aria-pressed="false">By financial year</button>
+          </div>
+        </div>
+        <div class="scroll"><table class="sched" id="o_sched"></table></div>
+      </section>
+
+      <div class="note" id="o_note"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const inr=v=>(v<0?"−":"")+"₹"+Math.abs(v).toLocaleString("en-IN",{maximumFractionDigits:2,minimumFractionDigits:2});
+const pct=v=>isFinite(v)?v.toFixed(2)+"%":"–";
+const num=id=>{const v=parseFloat($(id).value);return isFinite(v)?v:0};
+const FREQ={12:"Monthly, 12 a year",4:"Quarterly, 4 a year",2:"Half-yearly, 2 a year",1:"Annual, once a year"};
+const DAY=86400000;
+const parseD=s=>{if(!s)return null;const [y,m,d]=s.split("-").map(Number);if(!(y>=1900&&y<=2200))return null;return Date.UTC(y,m-1,d)};
+function addMonths(t,m){const d=new Date(t),day=d.getUTCDate();
+  const r=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+m,1));
+  const last=new Date(Date.UTC(r.getUTCFullYear(),r.getUTCMonth()+1,0)).getUTCDate();
+  r.setUTCDate(Math.min(day,last));return r.getTime()}
+const fmtD=t=>new Date(t).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});
+// coupon periods after start. Coupons fall on day `day` of month `mon` (+ every step months).
+// Coupons on or before the start date belong to the seller, so the first one counted is the next after start.
+// If the last coupon date falls before maturity, a short final period ends on maturity.
+const dateOn=(y,mo,day)=>{const last=new Date(Date.UTC(y,mo+1,0)).getUTCDate();return Date.UTC(y,mo,Math.min(day,last))};
+function schedule(s,m,f,day,mon){const out=[];if(s==null||m==null||m<=s)return out;
+  const step=12/f, md=new Date(m);
+  if(!day){day=md.getUTCDate();mon=md.getUTCMonth()}
+  const y0=new Date(s).getUTCFullYear(), base=mon%step;
+  const at=k=>dateOn(y0,base+k*step,day);
+  let k=0,g=0; while(at(k)>s&&g++<5000)k--; while(at(k+1)<=s&&g++<10000)k++;
+  let j=k+1;
+  while(at(j)<=m&&g++<15000){out.push({d:at(j),prev:at(j-1),broken:false});j++}
+  const lastD=out.length?out[out.length-1].d:at(k);
+  if(lastD<m) out.push({d:m,prev:lastD,broken:true,full:at(j)-lastD});
+  return out}
+const isLeap=y=>(y%4===0&&y%100!==0)||y%400===0;
+function hasFeb29(a,b){for(let y=new Date(a).getUTCFullYear();y<=new Date(b).getUTCFullYear();y++){
+  if(isLeap(y)){const t=Date.UTC(y,1,29);if(t>a&&t<=b)return true}}return false}
+// one row per payout: period start, days, gross, tds, net
+function buildPayouts(periods,f,annual,tdsPct,dc,rnd){
+  const R=v=>rnd==="rupee"?Math.round(v):v;
+  const fin=(g,t)=>rnd==="up"?{g,t,n:Math.ceil(g-t-1e-9)}:{g:R(g),t:R(R(g)*tdsPct/100),n:R(g)-R(R(g)*tdsPct/100)};
+  return periods.map(({d,prev,broken,full})=>{const days=Math.round((d-prev)/DAY);
+    let g;
+    if(dc==="equal") g=broken?annual/f*(d-prev)/full:annual/f;
+    else g=annual*days/(dc==="a365"?365:(hasFeb29(prev,d)?366:365));
+    const o=fin(g,g*tdsPct/100);return {d,prev,days,...o,broken}})}
+
+// YTM (nominal, compounded at payout frequency) from actual cash flows
+function impliedYtm(price,fv,f,s,pays){
+  if(!(price>0)||!(fv>0)||!pays.length) return NaN;
+  const ts=pays.map(p=>(p.d-s)/DAY/365*f), last=ts[ts.length-1];
+  const pv=r=>{const b=1+r/f;let v=0;pays.forEach((p,i)=>v+=p.g/Math.pow(b,ts[i]));return v+fv/Math.pow(b,last)};
+  let lo=-0.9*f,hi=2;
+  for(let j=0;j<200;j++){const mid=(lo+hi)/2; if(pv(mid)>price) lo=mid; else hi=mid;}
+  return (lo+hi)/2*100;
+}
+
+const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+(function(){const s=$("pday");s.innerHTML='<option value="">Same day as maturity</option>'+
+  Array.from({length:31},(_,i)=>{const d=i+1,suf=(d%10===1&&d!==11)?"st":(d%10===2&&d!==12)?"nd":(d%10===3&&d!==13)?"rd":"th";
+    return `<option value="${d}">${d}${suf}${d>=29?" (or month end)":""}</option>`}).join("")})();
+let lastStep=null;
+function syncPayMonths(f,m){const step=12/f,w=$("pmonwrap"),sel=$("pmon");
+  w.hidden=step===1||!$("pday").value;
+  if(step===lastStep)return; lastStep=step;
+  const def=m!=null?new Date(m).getUTCMonth()%step:0;
+  $("pmonlbl").textContent=step===12?"Paid in":"In months";
+  sel.innerHTML=Array.from({length:step},(_,i)=>{const ms=[];for(let x=i;x<12;x+=step)ms.push(MON[x]);
+    return `<option value="${i}"${i===def?" selected":""}>${ms.join(", ")}</option>`}).join("");}
+
+function calc(){
+  const fv=num("fv"),q=num("qty"),price=num("price")||fv,cr=num("cr"),f=+$("freq").value,
+        ytm=num("ytm"),tds=num("tds"),slab=+$("slab").value,dc=$("dc").value,rnd=$("rnd").value;
+  const s=parseD($("sd").value),m=parseD($("md").value);
+  const days=(s!=null&&m!=null)?Math.max(0,(m-s)/DAY):0, yrs=days/365;
+  syncPayMonths(f,m);
+  const pday=+$("pday").value, ipd=pday||null;
+  const periods=schedule(s,m,f,pday,+$("pmon").value), dates=periods.map(p=>p.d), npay=dates.length;
+  const badDates=s!=null&&m!=null&&m<=s;
+  $("o_dates").textContent=badDates?`Maturity (${fmtD(m)}) is on or before the start date (${fmtD(s)}). Check the maturity year.`:(ipd==null?"Start = the date you buy (settlement). Payout dates are counted back from maturity.":"Start = the date you buy (settlement). Coupons on or before this date go to the seller; yours start from the next one.");
+  $("o_dates").className="hint"+(badDates?" neg":"");
+  const Y=Math.floor(days/365.25), remD=Math.round(days-Y*365.25);
+  $("o_tenure").textContent=days?`${Y} yr ${remD} d`:"–";
+  $("o_days").textContent=days?`${Math.round(days).toLocaleString("en-IN")} days ≈ ${yrs.toFixed(2)} years`:"Set both dates";
+  $("o_npay").textContent=npay;
+  $("o_next").textContent=npay?`First on ${fmtD(dates[0])}, last on ${fmtD(dates[npay-1])}`:"No payouts in this window";
+
+  const gross=fv*q*cr/100;
+  const pays=buildPayouts(periods,f,gross,tds,dc,rnd);
+  const first=pays[0]||{g:gross/f,t:gross/f*tds/100,n:gross/f*(1-tds/100),days:0};
+  const varies=dc!=="equal";
+  const taxYr=gross*slab/100, bal=taxYr-gross*tds/100;
+  const inv=price*q, cy=inv?gross/inv*100:NaN, ytmRet=inv*ytm/100;
+  const totC=pays.reduce((a,p)=>a+p.g,0), cg=(fv-price)*q, tot=totC+cg;
+  const impl=impliedYtm(price,fv,f,s,pays.map(p=>({d:p.d,g:p.g/q||0})));
+
+  $("o_netcap").textContent=pays[0]?`Credited to bank, next payout (${fmtD(first.d)})`:"Credited to bank, per payout";
+  $("o_netper").textContent=inr(first.n); $("o_gross").textContent=inr(gross);
+  $("o_gplabel").textContent=varies?"Gross coupon, next payout":"Gross coupon per payout";
+  $("o_tdlabel").textContent=varies?"TDS deducted, next payout":"TDS deducted per payout";
+  $("o_freqtxt").textContent=FREQ[f]+(varies&&pays[0]?` · ${first.days}-day period, amount varies by days`:"");
+  $("o_grossper").textContent=inr(first.g); $("o_tdsper").textContent=inr(-first.t);
+  $("o_netyr").textContent=inr(gross*(1-tds/100)); $("o_taxyr").textContent=inr(taxYr);
+  const b=$("o_bal"); b.textContent=bal>=0?inr(bal)+" to pay":inr(-bal)+" refund"; b.className=bal>=0?"neg":"pos";
+  $("o_inv").textContent=inr(inv); $("o_cy").textContent=pct(cy);
+  $("o_ytmret").textContent=inr(ytmRet); $("o_impl").textContent=pct(impl);
+  $("o_totc").textContent=inr(totC);
+  const c=$("o_cg"); c.textContent=inr(cg); c.className=cg<0?"neg":cg>0?"pos":"";
+  $("o_tot").textContent=inr(tot);
+  $("o_pt").textContent=pct(ytm*(1-slab/100));
+
+  const prem=price>fv?"premium":price<fv?"discount":"par";
+  let msg=`<p>You bought at <b>${prem}</b>. `;
+  if(prem==="premium") msg+=`Your YTM sits below the ${cr}% coupon because ${inr(-cg)} of what you paid doesn't come back at maturity.</p>`;
+  else if(prem==="discount") msg+=`Your YTM sits above the ${cr}% coupon because you get ${inr(cg)} extra back at maturity.</p>`;
+  else msg+=`Coupon rate and YTM should be about the same.</p>`;
+  if(isFinite(impl)&&ytm&&Math.abs(impl-ytm)>0.25)
+    msg+=`<p>The quoted YTM (${pct(ytm)}) differs from the one implied by your price (${pct(impl)}). Check the price, dates or payout frequency. Accrued interest included in the quoted price can also cause this.</p>`;
+  msg+=`<p>Tax note: coupon is taxed at your slab. A redemption gain or loss has its own capital-gains treatment, which this estimate doesn't model.</p>`;
+  if(pays[0]&&s>first.prev){const acc=first.g*(s-first.prev)/(first.d-first.prev);
+    if(acc>0.005) msg+=`<p>If you buy mid-period, you usually pay about ${inr(acc)} of accrued interest to the seller on top of the price, and get it back in the first coupon.</p>`;}
+  $("o_note").innerHTML=msg;
+  renderSched(pays,fv*q,m,varies);
+}
+
+let view="each";
+function setView(v){view=v;for(const [id,k] of [["v_each","each"],["v_fy","fy"]]){const b=$(id);b.classList.toggle("on",k===v);b.setAttribute("aria-pressed",k===v)}calc()}
+$("v_each").addEventListener("click",()=>setView("each"));
+$("v_fy").addEventListener("click",()=>setView("fy"));
+const fyOf=t=>{const d=new Date(t),y=d.getUTCFullYear(),m=d.getUTCMonth();const s=m>=3?y:y-1;return `FY ${s}-${String((s+1)%100).padStart(2,"0")}`};
+function renderSched(pays,principal,m,showDays){
+  const el=$("o_sched");
+  if(!pays.length){el.innerHTML='<tr><td>Set a start and maturity date to see the schedule.</td></tr>';return}
+  let rows="",G=0,T=0,N=0;
+  const dH=showDays?'<th>Days</th>':'', dD=v=>showDays?`<td>${v}</td>`:'';
+  if(view==="each"){
+    rows=`<tr><th>#</th><th>Date</th>${dH}<th>Gross</th><th>TDS</th><th>Net credited</th><th>Cumulative net</th></tr>`;
+    pays.forEach((p,i)=>{G+=p.g;T+=p.t;N+=p.n;
+      rows+=`<tr><td>${i+1}</td><td>${fmtD(p.d)}</td>${dD(p.days)}<td>${inr(p.g)}</td><td>${inr(-p.t)}</td><td>${inr(p.n)}</td><td>${inr(N)}</td></tr>`});
+    if(pays.some(p=>p.broken)) rows+=`<tr><td colspan="${showDays?7:6}" style="text-align:left;font-family:var(--sans);color:var(--muted);white-space:normal">Last payout covers a short period ending on the maturity date.</td></tr>`;
+    rows+=`<tr class="red"><td></td><td>${fmtD(m)}</td><td colspan="${showDays?3:2}" style="text-align:left;font-family:var(--sans)">Principal returned</td><td>${inr(principal)}</td><td>${inr(N+principal)}</td></tr>`;
+    rows+=`<tr class="tot"><td></td><td>Total</td>${showDays?'<td></td>':''}<td>${inr(G)}</td><td>${inr(-T)}</td><td>${inr(N)}</td><td></td></tr>`;
+  } else {
+    const fy=new Map();for(const p of pays){const k=fyOf(p.d);const o=fy.get(k)||{n:0,g:0,t:0};o.n++;o.g+=p.g;o.t+=p.t;fy.set(k,o)}
+    rows='<tr><th>Financial year</th><th>Payouts</th><th>Gross</th><th>TDS</th><th>Net credited</th></tr>';
+    for(const [k,o] of fy){G+=o.g;T+=o.t;N+=o.g-o.t;
+      rows+=`<tr><td>${k}</td><td>${o.n}</td><td>${inr(o.g)}</td><td>${inr(-o.t)}</td><td>${inr(o.g-o.t)}</td></tr>`}
+    rows+=`<tr class="red"><td>${fyOf(m)}</td><td style="font-family:var(--sans)">Principal</td><td colspan="2"></td><td>${inr(principal)}</td></tr>`;
+    rows+=`<tr class="tot"><td>Total</td><td>${pays.length}</td><td>${inr(G)}</td><td>${inr(-T)}</td><td>${inr(N)}</td></tr>`;
+  }
+  el.innerHTML=rows;
+}
+$("f").addEventListener("input",calc); $("f").addEventListener("submit",e=>e.preventDefault());
+calc();
+</script>
+
+</body>
+</html>
