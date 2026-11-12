@@ -30,9 +30,10 @@ img{max-width:100%}
 body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.5}
 .wrap{max-width:1040px;margin:0 auto;padding-block:28px 48px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-h1{font-size:1.6rem;font-weight:600;margin:0 0 4px;text-wrap:balance}
+h1{font-size:1.6rem;font-weight:600;margin:0;text-wrap:balance}
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}
 .sub{color:var(--muted);margin:0 0 24px;max-width:65ch}
-.grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:20px;align-items:start}
+.grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
 @media (max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
 .fields{display:grid;gap:14px}
@@ -40,12 +41,17 @@ label{display:block;font-size:.78rem;font-weight:500;color:var(--muted);text-tra
 .in{display:flex;align-items:center;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
 .in:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .in span{padding:0 10px;color:var(--muted);font-family:var(--mono);font-size:.9rem}
-input,select{flex:1;min-width:0;border:0;background:transparent;color:var(--fg);font:500 1rem var(--mono);padding:9px 10px;outline:none}
+input,select{flex:1;min-width:0;width:100%;box-sizing:border-box;text-overflow:ellipsis;border:0;background:transparent;color:var(--fg);font:500 1rem var(--mono);padding:9px 10px;outline:none}
 select{font-family:var(--sans);cursor:pointer}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.fields>*,.row2>*{min-width:0}
+.in{min-width:0;box-sizing:border-box;width:100%}
+@media (max-width:340px){.row2{grid-template-columns:minmax(0,1fr)}}
 .hint{font-size:.78rem;color:var(--muted);margin-top:4px}
 .sect{margin:0 0 6px;font-size:.78rem;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
-.results{display:grid;gap:20px}
+.results{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+.results>*,.grid>*{min-width:0}
+.big{overflow-wrap:anywhere}
 .head{display:flex;flex-wrap:wrap;gap:24px;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:8px}
 .head div{min-width:0}
 .big{font:500 1.7rem var(--mono);font-variant-numeric:tabular-nums}
@@ -77,7 +83,14 @@ table.sched tr.tot td{font-weight:600;border-top:2px solid var(--line)}
 </head>
 <body>
 <div class="wrap">
-  <h1>Bond Interest Calculator</h1>
+  <div class="top">
+    <h1>Bond Interest Calculator</h1>
+    <div class="seg" id="theme" role="group" aria-label="Theme">
+      <button type="button" data-t="system" aria-pressed="true">Auto</button>
+      <button type="button" data-t="light" aria-pressed="false">Light</button>
+      <button type="button" data-t="dark" aria-pressed="false">Dark</button>
+    </div>
+  </div>
   <p class="sub">Enter the bond's terms to see the coupon you'll receive, what lands in your bank after TDS, and the real return implied by the YTM and your purchase price. The figures loaded are an example.</p>
 
   <div class="grid">
@@ -238,6 +251,13 @@ function syncPayMonths(f,m){const step=12/f,w=$("pmonwrap"),sel=$("pmon");
   $("pmonlbl").textContent=step===12?"Paid in":"In months";
   sel.innerHTML=Array.from({length:step},(_,i)=>{const ms=[];for(let x=i;x<12;x+=step)ms.push(MON[x]);
     return `<option value="${i}"${i===def?" selected":""}>${ms.join(", ")}</option>`}).join("");}
+
+// theme: Auto follows the device; Light/Dark override and are remembered in this browser
+function applyTheme(m){const r=document.documentElement;if(m==="system")r.removeAttribute("data-theme");else r.setAttribute("data-theme",m);
+  document.querySelectorAll("#theme button").forEach(b=>{const on=b.dataset.t===m;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on)})}
+let savedTheme="system";try{savedTheme=localStorage.getItem("bond-theme")||"system"}catch(e){}
+applyTheme(savedTheme);
+document.querySelectorAll("#theme button").forEach(b=>b.addEventListener("click",()=>{applyTheme(b.dataset.t);try{localStorage.setItem("bond-theme",b.dataset.t)}catch(e){}}));
 
 function calc(){
   const fv=num("fv"),q=num("qty"),price=num("price")||fv,cr=num("cr"),f=+$("freq").value,
